@@ -5,6 +5,7 @@ import anthropic
 # --- 설정 ---
 REFERENCE_DIR = Path(".claude/skills/apt-review/reference")
 PINNED_APT = "판교 백현동 판교푸르지오그랑블"
+HIDDEN_APTS = {"비산동 안양임곡휴먼시아"}
 
 SYSTEM_PROMPT_HEADER = """당신은 아파트 입주민 리뷰 데이터를 기반으로 매수 관점에서 답변하는 전문 상담사입니다.
 
@@ -71,6 +72,7 @@ def load_all_references():
     return {
         md_file.stem: md_file.read_text(encoding='utf-8')
         for md_file in REFERENCE_DIR.glob("*.md")
+        if md_file.stem not in HIDDEN_APTS
     }
 
 
