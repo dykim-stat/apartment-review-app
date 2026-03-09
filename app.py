@@ -31,6 +31,10 @@ CSS = """
 }
 h1 { font-weight: 700 !important; color: #1a1a2e !important; font-size: 1.6rem !important; }
 @media (max-width: 767px) { h1 { font-size: 1.3rem !important; } }
+@media (max-width: 767px) {
+    [data-testid="stChatMessage"] { gap: 0 !important; }
+    [data-testid="stChatMessage"] [data-testid="chatAvatarIcon-assistant"] { display: none !important; }
+}
 [data-testid="stChatMessage"] h1 { font-size: 1.2rem !important; }
 [data-testid="stChatMessage"] h2 { font-size: 1.05rem !important; }
 [data-testid="stChatMessage"] h3 { font-size: 0.95rem !important; }
