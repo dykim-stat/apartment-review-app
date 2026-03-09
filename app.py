@@ -113,7 +113,7 @@ def main():
         else:
             all_keys = list(all_refs.keys())
             if "multiselect_apts" not in st.session_state:
-                default_apt = next((k for k in all_keys if "판교 프루지오그랑블" in k), all_keys[0])
+                default_apt = next((k for k in all_keys if "판교 백현동 판교프루지오그랑블" in k), all_keys[0])
                 st.session_state.multiselect_apts = [default_apt]
 
             st.divider()
