@@ -28,7 +28,11 @@ CSS = """
 @media (min-width: 768px) {
     [data-testid="stSidebar"] { min-width: 400px !important; max-width: 400px !important; }
 }
-h1 { font-weight: 700 !important; color: #1a1a2e !important; }
+h1 { font-weight: 700 !important; color: #1a1a2e !important; font-size: 1.6rem !important; }
+@media (max-width: 767px) { h1 { font-size: 1.3rem !important; } }
+[data-testid="stChatMessage"] h1 { font-size: 1.2rem !important; }
+[data-testid="stChatMessage"] h2 { font-size: 1.05rem !important; }
+[data-testid="stChatMessage"] h3 { font-size: 0.95rem !important; }
 [data-testid="stChatInput"] textarea { border-radius: 12px !important; }
 
 .empty-state { text-align: center; padding: 60px 20px; color: #888; }
