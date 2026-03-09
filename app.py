@@ -4,6 +4,7 @@ import anthropic
 
 # --- 설정 ---
 REFERENCE_DIR = Path(".claude/skills/apt-review/reference")
+PINNED_APT = "판교 백현동 판교푸르지오그랑블"
 
 SYSTEM_PROMPT_HEADER = """당신은 아파트 입주민 리뷰 데이터를 기반으로 매수 관점에서 답변하는 전문 상담사입니다.
 
@@ -22,44 +23,26 @@ SYSTEM_PROMPT_HEADER = """당신은 아파트 입주민 리뷰 데이터를 기�
 
 CSS = """
 <style>
-/* 전체 배경 */
-[data-testid="stAppViewContainer"] {
-    background-color: #f8f9fb;
+[data-testid="stAppViewContainer"] { background-color: #f8f9fb; }
+[data-testid="stSidebar"] { background-color: #ffffff; border-right: 1px solid #e8eaed; min-width: 400px !important; max-width: 400px !important; }
+h1 { font-weight: 700 !important; color: #1a1a2e !important; }
+[data-testid="stChatInput"] textarea { border-radius: 12px !important; }
+
+.empty-state { text-align: center; padding: 60px 20px; color: #888; }
+.empty-state .icon { font-size: 56px; margin-bottom: 16px; }
+.empty-state p { font-size: 15px; line-height: 1.6; }
+
+/* multiselect 태그 글씨 잘림 해제 */
+[data-testid="stMultiSelect"] [data-baseweb="tag"] {
+    max-width: none !important;
+}
+[data-testid="stMultiSelect"] [data-baseweb="tag"] span:first-child {
+    overflow: visible !important;
+    text-overflow: unset !important;
+    white-space: nowrap !important;
+    max-width: none !important;
 }
 
-/* 사이드바 */
-[data-testid="stSidebar"] {
-    background-color: #ffffff;
-    border-right: 1px solid #e8eaed;
-}
-
-/* 타이틀 */
-h1 {
-    font-weight: 700 !important;
-    color: #1a1a2e !important;
-}
-
-/* 채팅 입력창 */
-[data-testid="stChatInput"] textarea {
-    border-radius: 12px !important;
-}
-
-/* 빈 상태 안내 */
-.empty-state {
-    text-align: center;
-    padding: 60px 20px;
-    color: #888;
-}
-.empty-state .icon {
-    font-size: 56px;
-    margin-bottom: 16px;
-}
-.empty-state p {
-    font-size: 15px;
-    line-height: 1.6;
-}
-
-/* 단지 뱃지 */
 .apt-badge {
     display: inline-block;
     background: #e8f0fe;
@@ -80,16 +63,12 @@ def load_all_references():
         return {}
     return {
         md_file.stem: md_file.read_text(encoding='utf-8')
-        for md_file in sorted(REFERENCE_DIR.glob("*.md"))
+        for md_file in REFERENCE_DIR.glob("*.md")
     }
 
 
 def build_system_prompt(refs: dict, selected: list[str]) -> str:
-    parts = [SYSTEM_PROMPT_HEADER]
-    for name in selected:
-        parts.append(f"# {name}\n\n{refs[name]}")
-    if len(parts) == 1:
-        parts.append("현재 선택된 단지가 없습니다.")
+    parts = [SYSTEM_PROMPT_HEADER] + [f"# {name}\n\n{refs[name]}" for name in selected]
     return "\n\n---\n\n".join(parts)
 
 
@@ -103,20 +82,18 @@ def main():
         return
 
     all_refs = load_all_references()
+    client = anthropic.Anthropic(api_key=api_key)
 
     with st.sidebar:
         st.markdown("### 🏘️ 단지 선택")
-        st.divider()
         if not all_refs:
             st.warning("참고 자료 없음")
             selected = []
         else:
-            all_keys = list(all_refs.keys())
+            all_keys = sorted(all_refs.keys(), key=lambda k: (0 if PINNED_APT in k else 1, k))
             if "multiselect_apts" not in st.session_state:
-                default_apt = next((k for k in all_keys if "판교 백현동 판교프루지오그랑블" in k), all_keys[0])
-                st.session_state.multiselect_apts = [default_apt]
+                st.session_state.multiselect_apts = [all_keys[0]]
 
-            st.divider()
             col1, col2 = st.columns(2)
             if col1.button("전체 선택", use_container_width=True):
                 st.session_state.multiselect_apts = all_keys
@@ -141,7 +118,6 @@ def main():
     if selected:
         badges = " ".join(f'<span class="apt-badge">{name}</span>' for name in selected)
         st.markdown(badges, unsafe_allow_html=True)
-        st.markdown("")
     else:
         st.warning("사이드바에서 단지를 선택해주세요.")
 
@@ -170,19 +146,15 @@ def main():
         with st.chat_message("user"):
             st.markdown(prompt)
 
-        system_prompt = build_system_prompt(all_refs, selected)
-
         with st.chat_message("assistant"):
             with st.spinner("답변 생성 중..."):
-                client = anthropic.Anthropic(api_key=api_key)
                 response = client.messages.create(
                     model="claude-haiku-4-5-20251001",
                     max_tokens=2048,
-                    system=system_prompt,
+                    system=build_system_prompt(all_refs, selected),
                     messages=st.session_state.messages,
                 )
                 answer = response.content[0].text
-
             st.markdown(answer)
 
         st.session_state.messages.append({"role": "assistant", "content": answer})
