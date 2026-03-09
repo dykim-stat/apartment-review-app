@@ -20,6 +20,59 @@ SYSTEM_PROMPT_HEADER = """당신은 아파트 입주민 리뷰 데이터를 기�
 
 """
 
+CSS = """
+<style>
+/* 전체 배경 */
+[data-testid="stAppViewContainer"] {
+    background-color: #f8f9fb;
+}
+
+/* 사이드바 */
+[data-testid="stSidebar"] {
+    background-color: #ffffff;
+    border-right: 1px solid #e8eaed;
+}
+
+/* 타이틀 */
+h1 {
+    font-weight: 700 !important;
+    color: #1a1a2e !important;
+}
+
+/* 채팅 입력창 */
+[data-testid="stChatInput"] textarea {
+    border-radius: 12px !important;
+}
+
+/* 빈 상태 안내 */
+.empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: #888;
+}
+.empty-state .icon {
+    font-size: 56px;
+    margin-bottom: 16px;
+}
+.empty-state p {
+    font-size: 15px;
+    line-height: 1.6;
+}
+
+/* 단지 뱃지 */
+.apt-badge {
+    display: inline-block;
+    background: #e8f0fe;
+    color: #1967d2;
+    border-radius: 20px;
+    padding: 4px 12px;
+    font-size: 13px;
+    font-weight: 500;
+    margin: 2px 3px;
+}
+</style>
+"""
+
 
 @st.cache_data
 def load_all_references():
@@ -41,7 +94,8 @@ def build_system_prompt(refs: dict, selected: list[str]) -> str:
 
 
 def main():
-    st.set_page_config(page_title="아파트 리뷰 Q&A", page_icon="🏠")
+    st.set_page_config(page_title="아파트 리뷰 Q&A", page_icon="🏠", layout="centered")
+    st.markdown(CSS, unsafe_allow_html=True)
 
     api_key = st.secrets.get("CLAUDE_API_KEY", "")
     if not api_key:
@@ -51,40 +105,57 @@ def main():
     all_refs = load_all_references()
 
     with st.sidebar:
-        st.header("단지 선택")
+        st.markdown("### 🏘️ 단지 선택")
+        st.divider()
         if not all_refs:
             st.warning("참고 자료 없음")
             selected = []
         else:
+            all_keys = list(all_refs.keys())
+            if "multiselect_apts" not in st.session_state:
+                default_apt = next((k for k in all_keys if "판교 프루지오그랑블" in k), all_keys[0])
+                st.session_state.multiselect_apts = [default_apt]
+
+            st.divider()
             col1, col2 = st.columns(2)
             if col1.button("전체 선택", use_container_width=True):
-                st.session_state.selected = list(all_refs.keys())
+                st.session_state.multiselect_apts = all_keys
             if col2.button("전체 해제", use_container_width=True):
-                st.session_state.selected = []
+                st.session_state.multiselect_apts = []
 
-            if "selected" not in st.session_state:
-                st.session_state.selected = list(all_refs.keys())
+            selected = st.multiselect(
+                "분석할 단지를 선택하세요",
+                options=all_keys,
+                placeholder="단지 검색...",
+                label_visibility="collapsed",
+                key="multiselect_apts",
+            )
 
-            selected = []
-            for name in all_refs:
-                checked = st.checkbox(name, value=name in st.session_state.selected, key=f"chk_{name}")
-                if checked:
-                    selected.append(name)
-            st.session_state.selected = selected
-
+        selected = st.session_state.get("multiselect_apts", [])
         if selected:
-            st.caption(f"{len(selected)}개 단지 선택됨")
+            st.caption(f"✅ {len(selected)}개 단지 선택됨")
 
-    st.title("🏠 아파트 리뷰 Q&A")
-    st.caption("입주민 리뷰 데이터를 기반으로 아파트 매수 희망 관점에서 답변합니다.")
+    st.title("🏠 아파트 리뷰 챗봇")
+    st.caption("호갱노노 입주민 리뷰 데이터를 기반으로 아파트 매수자 관점에서 답변합니다.")
 
     if selected:
-        st.info(f"대상: {' · '.join(selected)}", icon="🏘️")
+        badges = " ".join(f'<span class="apt-badge">{name}</span>' for name in selected)
+        st.markdown(badges, unsafe_allow_html=True)
+        st.markdown("")
     else:
         st.warning("사이드바에서 단지를 선택해주세요.")
 
     if "messages" not in st.session_state:
         st.session_state.messages = []
+
+    if not st.session_state.messages:
+        st.markdown("""
+        <div class="empty-state">
+            <div class="icon">💬</div>
+            <p>단지를 선택하고 궁금한 점을 질문해보세요.<br>
+            층간소음, 주차, 관리비, 학군 등 다양한 항목을 물어볼 수 있어요.</p>
+        </div>
+        """, unsafe_allow_html=True)
 
     for msg in st.session_state.messages:
         with st.chat_message(msg["role"]):
