@@ -6,5 +6,6 @@ debug_page.html
 .claude/settings.json
 .claude/settings.local.json
 .claude/skills/apt-summarize/
+.claude/skills/apt-review/reference/비산동 안양임곡휴먼시아.md
 crawling.py
 target_complexes.py
